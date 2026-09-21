@@ -61,7 +61,9 @@ or on GitHub click **Code → Download ZIP** and unzip it.
 
 Everyone should use **their own** Groq key. Keys are free, and if friends share one key they share one rate limit, which runs out exactly when everyone in the same quiz is asking at once.
 
-**Updating:** download the new zip, replace the old folder, then click ↻ on the extension card in `chrome://extensions` and refresh any menti.com tab.
+**Updating:** download the new zip from Releases, replace the old `extension` folder with the new one, then click ↻ on the Menti Solver card in `chrome://extensions`. Quiz tabs that are already open pick up the new version automatically, so there's no need to refresh them. (Coming from v2.0.0, refresh open menti.com tabs once.)
+
+**Permissions it asks for:** storage (your keys and settings, kept in this browser), access to api.groq.com and api.cerebras.ai (to get answers), and access to menti.com plus "scripting" (to run on quiz pages, including tabs that were already open when you installed or updated).
 
 ### Using it
 
@@ -138,7 +140,7 @@ Use `openai/gpt-oss-120b` on Groq if accuracy matters more than a few hundred mi
 |---|---|
 | No pill appears on menti.com | Extension: reload it in `chrome://extensions` and refresh the tab. Python: make sure you're using the window it opened. |
 | Badge shows `!` / "Needs an API key" | Extension: open the popup and click Set up. Python: check `python/.env` exists and has `GROQ_API_KEY`. |
-| "The extension was updated. Refresh this page." | Refresh the menti.com tab. |
+| Pill says "Refresh this page" | The extension was updated while this tab was open and couldn't take over automatically. Refresh the tab once. |
 | Pill disappeared | The solver is off. Turn it on from the popup or with Alt+Shift+M. |
 | Shows the answer but doesn't click | Press Option/Alt+D and inspect the structure; the options may use unusual elements. |
 | Box never says "Thinking…" | Detection missed the options. Use Option/Alt+D to see what was detected. |
@@ -169,6 +171,17 @@ menti-solver/
 ├── LICENSE
 └── README.md
 ```
+
+## Changelog
+
+**v2.0.1**
+- Open quiz tabs keep working after the extension is updated or reloaded.
+- Routine errors (rate limits, timeouts) show in the on-page card instead of filling `chrome://extensions` > Errors.
+
+**v2.0.0**
+- Toolbar popup with an on/off switch, answer-and-click or show-only mode, and the last answer.
+- Toolbar badge, and the Alt+Shift+M shortcut.
+- First-run setup page, redesigned settings with key checking, and an on-page glass pill that opens into a card.
 
 ## Disclaimer
 

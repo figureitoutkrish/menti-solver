@@ -4,8 +4,14 @@
 
 (() => {
   'use strict';
-  if (window.top !== window || window.__mentiSolverLoaded) return;
-  window.__mentiSolverLoaded = true;
+  if (window.top !== window) return;
+
+  // When the extension is reloaded/updated, the background re-injects this script into open
+  // menti.com tabs. The newest copy takes over: older copies (whose connection to the
+  // extension is broken) hear this event and shut themselves down.
+  const INSTANCE = Math.random().toString(36).slice(2);
+  document.dispatchEvent(new CustomEvent('menti-solver:takeover', { detail: INSTANCE }));
+  document.querySelectorAll('menti-solver-ui').forEach(n => n.remove()); // clears UI left by very old versions
 
   // ---------------- config ----------------
   const MIN_OPTION_AREA = 1500;   // px^2 - quiz options are big tap targets
@@ -174,6 +180,7 @@
   }
 
   ui.sw.addEventListener('click', () => {
+    if (!contextValid()) { orphaned(); return; }
     enabled = !enabled;
     ui.sw.setAttribute('aria-checked', String(enabled)); // instant feedback
     chrome.storage.local.set({ enabled }).catch(() => {});
@@ -264,22 +271,56 @@
   }
 
   // ================= messaging =================
+  class OrphanError extends Error {}
+  const contextValid = () => { try { return Boolean(chrome.runtime?.id); } catch (_) { return false; } };
+
   function send(msg) {
     return new Promise((resolve, reject) => {
+      if (!contextValid()) return reject(new OrphanError('orphaned'));
       try {
         chrome.runtime.sendMessage(msg, res => {
-          if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
+          const err = chrome.runtime.lastError;
+          if (err) {
+            if (!contextValid() || /context invalidated|receiving end does not exist/i.test(err.message)) return reject(new OrphanError(err.message));
+            return reject(new Error(err.message));
+          }
           resolve(res);
         });
       } catch (_) {
-        reject(new Error('The extension was updated. Refresh this page.'));
+        reject(new OrphanError('orphaned'));
       }
     });
   }
 
+  // ================= shutdown =================
+  let dead = false;
+  const timers = [];
+  let observer = null;
+
+  function teardown({ keepUI = false } = {}) {
+    if (dead) return;
+    dead = true;
+    observer?.disconnect();
+    timers.forEach(clearInterval);
+    document.removeEventListener('keydown', onKeydown);
+    document.removeEventListener('menti-solver:takeover', onTakeover);
+    if (!keepUI) host.remove();
+  }
+
+  // This copy lost its connection and nothing replaced it: stop quietly and say what to do.
+  function orphaned() {
+    if (dead) return;
+    teardown({ keepUI: true });
+    setUI('error', { label: 'Refresh this page', question: 'Menti Solver was updated while this tab was open.', answer: 'Refresh to finish updating' });
+    flash(8000);
+  }
+
+  function onTakeover(e) { if (e.detail !== INSTANCE) teardown(); }
+  document.addEventListener('menti-solver:takeover', onTakeover);
+
   // ================= main loop =================
   async function tick() {
-    if (!enabled || !hasKey) return;
+    if (dead || !enabled || !hasKey) return;
     const opts = findOptions();
     if (!opts) return;
 
@@ -312,17 +353,18 @@
       flash();
       console.log(`[Menti Solver] ${ms} ms (${res.provider}) | Q: ${q} | A: ${res.n}. ${answer}`);
     } catch (e) {
+      if (e instanceof OrphanError) { orphaned(); return; }
       failures.set(key, (failures.get(key) || 0) + 1);
       setUI('error', { label: 'Couldn’t answer', question: q, answer: e.message, announce: `Couldn't answer: ${e.message}` });
       flash(6000);
-      console.warn('[Menti Solver]', e);
+      console.info('[Menti Solver]', e.message); // shown in the card; info level keeps chrome://extensions Errors clean
     } finally {
       busyKey = null;
     }
   }
 
   let scheduled = false;
-  new MutationObserver(() => {
+  observer = new MutationObserver(() => {
     if (scheduled) return;
     scheduled = true;
     requestAnimationFrame(() => { scheduled = false; tick(); });
@@ -330,10 +372,13 @@
     childList: true, subtree: true, characterData: true,
     attributes: true, attributeFilter: ['class', 'style', 'hidden', 'aria-hidden', 'disabled'],
   });
-  setInterval(tick, 300);
+  timers.push(setInterval(tick, 300));
 
   // keep the background worker (and its API connection) alive between questions
-  setInterval(() => { if (enabled) send({ type: 'ping' }).catch(() => {}); }, 20000);
+  timers.push(setInterval(() => {
+    if (!enabled || dead) return;
+    send({ type: 'ping' }).catch(e => { if (e instanceof OrphanError) orphaned(); });
+  }, 20000));
 
   // ================= settings sync =================
   chrome.storage.local.get({ enabled: true, autoClick: true, groqKey: '', cerebrasKey: '' }).then(s => {
@@ -345,7 +390,7 @@
   });
 
   chrome.storage.onChanged.addListener((ch, area) => {
-    if (area !== 'local') return;
+    if (area !== 'local' || dead) return;
     if (ch.autoClick) autoClick = ch.autoClick.newValue;
     if (ch.groqKey || ch.cerebrasKey) {
       chrome.storage.local.get({ groqKey: '', cerebrasKey: '' }).then(s => {
@@ -361,7 +406,7 @@
   });
 
   // ================= debug: Option/Alt+D copies the page structure =================
-  document.addEventListener('keydown', (e) => {
+  function onKeydown(e) {
     if (!e.altKey || e.code !== 'KeyD') return;
     const clone = document.body.cloneNode(true);
     clone.querySelectorAll('script,style,svg,img,noscript,iframe,video,canvas,menti-solver-ui').forEach(n => n.remove());
@@ -373,5 +418,6 @@
     navigator.clipboard.writeText(html)
       .then(() => { setUI('ready', { label: 'Page structure copied', question: 'Paste it wherever you need it.', answer: 'Copied' }); flash(2500); })
       .catch(() => console.log(html));
-  });
+  }
+  document.addEventListener('keydown', onKeydown);
 })();

@@ -164,12 +164,25 @@ async function refreshBadge() {
   await chrome.action.setTitle({ title });
 }
 
+// ---------- re-inject into open quiz tabs after install/update ----------
+// Chrome doesn't run content scripts in tabs that were already open, and after an update the
+// old copy in those tabs is cut off. Injecting the new copy lets it take over without a refresh.
+async function injectIntoOpenQuizTabs() {
+  try {
+    const tabs = await chrome.tabs.query({ url: ['https://www.menti.com/*', 'https://menti.com/*'] });
+    await Promise.all(tabs.map(t =>
+      chrome.scripting.executeScript({ target: { tabId: t.id }, files: ['content.js'] }).catch(() => {})
+    ));
+  } catch (_) { /* nothing open, or no access */ }
+}
+
 // ---------- events ----------
 chrome.runtime.onInstalled.addListener(async ({ reason }) => {
   const current = await chrome.storage.local.get(Object.keys(DEFAULTS));
   await chrome.storage.local.set({ ...DEFAULTS, ...current }); // fill in any missing defaults
   if (reason === 'install') chrome.tabs.create({ url: chrome.runtime.getURL('welcome.html') });
   refreshBadge();
+  injectIntoOpenQuizTabs();
 });
 chrome.runtime.onStartup.addListener(refreshBadge);
 

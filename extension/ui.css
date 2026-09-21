@@ -1,0 +1,176 @@
+/* Menti Solver - shared UI (popup, settings, setup)
+   Apple-style graphite + blue. System font, grouped inset lists, critically damped motion. */
+
+:root {
+  color-scheme: light dark;
+
+  --bg: #F2F2F7;
+  --surface: #FFFFFF;
+  --fill: rgba(120, 120, 128, 0.2);
+  --fill-strong: rgba(120, 120, 128, 0.32);
+  --text: #1D1D1F;
+  --text-2: #6E6E73;
+  --sep: rgba(60, 60, 67, 0.16);
+  --accent: #007AFF;          /* switches, selection, focus */
+  --accent-text: #0066CC;     /* links and accent-coloured text (4.5:1+) */
+  --button: #0071E3;          /* filled buttons with white text (4.5:1+) */
+  --button-press: #0062C3;
+  --ok: #248A3D;
+  --danger: #D70015;
+  --warn: #B25000;
+
+  --radius-lg: 14px;
+  --radius-md: 10px;
+  --ease: cubic-bezier(0.2, 0.9, 0.25, 1);   /* close to a critically damped spring */
+  --shadow-thumb: 0 3px 8px rgba(0, 0, 0, 0.15), 0 1px 1px rgba(0, 0, 0, 0.16);
+
+  font: 15px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1C1C1E;
+    --surface: #2C2C2E;
+    --fill: rgba(120, 120, 128, 0.28);
+    --fill-strong: rgba(120, 120, 128, 0.4);
+    --text: #F5F5F7;
+    --text-2: #A1A1A6;
+    --sep: rgba(84, 84, 88, 0.6);
+    --accent: #0A84FF;
+    --accent-text: #409CFF;
+    --ok: #30D158;
+    --danger: #FF6961;
+    --warn: #FFB340;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root { --sep: currentColor; --text-2: var(--text); }
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); }
+h1, h2, h3, p { margin: 0; }
+a { color: var(--accent-text); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 2px; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* ---------- type ---------- */
+.title-xl { font-size: 28px; line-height: 1.1; font-weight: 700; letter-spacing: -0.022em; }
+.title-lg { font-size: 22px; line-height: 1.15; font-weight: 700; letter-spacing: -0.018em; }
+.title-md { font-size: 17px; line-height: 1.3; font-weight: 600; letter-spacing: -0.01em; }
+.caption { font-size: 13px; line-height: 1.4; color: var(--text-2); }
+.section-label { font-size: 13px; color: var(--text-2); padding: 0 16px 6px; }
+
+/* ---------- switch ---------- */
+.switch {
+  --w: 51px; --h: 31px;
+  position: relative; flex: none; width: var(--w); height: var(--h);
+  padding: 0; border: 0; border-radius: 999px; cursor: pointer;
+  background: var(--fill-strong);
+  transition: background-color 220ms var(--ease);
+}
+.switch[aria-checked="true"] { background: var(--accent); }
+.switch .thumb {
+  position: absolute; top: 2px; left: 2px;
+  width: calc(var(--h) - 4px); height: calc(var(--h) - 4px);
+  border-radius: 999px; background: #fff; box-shadow: var(--shadow-thumb);
+  transition: transform 300ms var(--ease), width 140ms var(--ease);
+}
+.switch[aria-checked="true"] .thumb { transform: translateX(calc(var(--w) - var(--h))); }
+/* feedback on press, not release: the thumb stretches like iOS */
+.switch:active .thumb { width: calc(var(--h) + 4px); }
+.switch[aria-checked="true"]:active .thumb { transform: translateX(calc(var(--w) - var(--h) - 8px)); }
+.switch.lg { --w: 64px; --h: 38px; }
+
+/* ---------- buttons ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 36px; padding: 0 16px; border-radius: 999px; border: 0; cursor: pointer;
+  font: inherit; font-size: 15px; font-weight: 600; text-decoration: none;
+  background: var(--fill); color: var(--text);
+  transition: transform 100ms ease-out, background-color 150ms ease-out;
+}
+.btn:hover { text-decoration: none; background: var(--fill-strong); }
+.btn:active { transform: scale(0.97); }
+.btn.primary { background: var(--button); color: #fff; }
+.btn.primary:hover { background: var(--button-press); }
+.btn[disabled] { opacity: 0.5; cursor: default; transform: none; }
+
+.icon-btn {
+  display: inline-grid; place-items: center; width: 32px; height: 32px;
+  border: 0; border-radius: 999px; background: transparent; color: var(--text-2); cursor: pointer;
+  transition: transform 100ms ease-out, background-color 150ms ease-out;
+}
+.icon-btn:hover { background: var(--fill); color: var(--text); }
+.icon-btn:active { transform: scale(0.94); }
+.icon-btn svg { width: 18px; height: 18px; }
+
+/* ---------- segmented control ---------- */
+.segmented {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 2px;
+  margin: 0; padding: 2px; border: 0; border-radius: 9px; background: var(--fill);
+}
+.segmented input { position: absolute; opacity: 0; pointer-events: none; }
+.segmented label {
+  display: grid; place-items: center; min-height: 30px; padding: 0 10px; border-radius: 7px;
+  font-size: 13px; font-weight: 500; color: var(--text); cursor: pointer; text-align: center;
+  transition: background-color 200ms var(--ease), box-shadow 200ms var(--ease);
+}
+.segmented input:checked + label { background: var(--surface); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.04); font-weight: 600; }
+.segmented input:focus-visible + label { outline: 3px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 1px; }
+@media (prefers-color-scheme: dark) { .segmented input:checked + label { background: #636366; } }
+
+/* ---------- grouped inset list (iOS Settings) ---------- */
+.group { background: var(--surface); border-radius: var(--radius-lg); overflow: hidden; }
+.row {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  min-height: 48px; padding: 10px 16px; position: relative;
+}
+.row + .row::before { content: ""; position: absolute; top: 0; left: 16px; right: 0; border-top: 0.5px solid var(--sep); }
+.row.stack { flex-direction: column; align-items: stretch; gap: 8px; }
+.row-label { font-weight: 500; }
+.row-help { font-size: 13px; color: var(--text-2); margin-top: 2px; }
+
+/* ---------- fields ---------- */
+.field { position: relative; display: flex; align-items: center; }
+.field input {
+  width: 100%; min-height: 40px; padding: 8px 12px; border-radius: var(--radius-md);
+  border: 1px solid var(--sep); background: var(--bg); color: var(--text); font: inherit; font-size: 15px;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+.field input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+.field.has-btn input { padding-right: 44px; }
+.field .icon-btn { position: absolute; right: 4px; }
+.field input.mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; }
+
+.status { display: flex; align-items: flex-start; gap: 6px; font-size: 13px; line-height: 1.4; min-height: 18px; }
+.status svg { width: 16px; height: 16px; flex: none; margin-top: 1px; }
+.status.ok { color: var(--ok); }
+.status.error { color: var(--danger); }
+.status.info { color: var(--text-2); }
+
+kbd {
+  font: 500 12px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  padding: 4px 7px; border-radius: 6px; background: var(--fill); color: var(--text);
+  border: 0.5px solid var(--sep);
+}
+
+details.advanced > summary {
+  list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+  min-height: 48px; padding: 10px 16px; font-weight: 500;
+}
+details.advanced > summary::-webkit-details-marker { display: none; }
+details.advanced > summary svg { width: 16px; height: 16px; color: var(--text-2); transition: transform 250ms var(--ease); }
+details.advanced[open] > summary svg { transform: rotate(90deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 1ms !important; animation-duration: 1ms !important; }
+}

@@ -1,14 +1,20 @@
 // Menti Solver - background service worker.
-// Makes the API calls (content scripts can't call Groq/Cerebras directly because of CORS)
-// and races the configured providers so the fastest valid answer wins.
+// API calls (content scripts can't call Groq/Cerebras directly because of CORS),
+// provider race, key validation, toolbar badge, keyboard shortcut, first-run setup.
 
 const DEFAULTS = {
+  enabled: true,
+  autoClick: true,
   groqKey: '',
   cerebrasKey: '',
   groqModel: 'openai/gpt-oss-20b',
   cerebrasModel: 'gpt-oss-120b',
   timeoutMs: 2500,
-  autoClick: true,
+};
+
+const PROVIDERS = {
+  groq: { label: 'Groq', base: 'https://api.groq.com/openai/v1' },
+  cerebras: { label: 'Cerebras', base: 'https://api.cerebras.ai/v1' },
 };
 
 const SYSTEM = 'You answer multiple-choice quiz questions. Output only the option number.';
@@ -18,13 +24,26 @@ async function getSettings() {
   return { ...DEFAULTS, ...(await chrome.storage.local.get(Object.keys(DEFAULTS))) };
 }
 
-function providersFrom(s) {
+function activeProviders(s) {
   return [
-    { name: 'groq', base: 'https://api.groq.com/openai/v1', key: s.groqKey.trim(), model: s.groqModel.trim() },
-    { name: 'cerebras', base: 'https://api.cerebras.ai/v1', key: s.cerebrasKey.trim(), model: s.cerebrasModel.trim() },
-  ].filter(p => p.key);
+    { name: 'groq', key: s.groqKey.trim(), model: s.groqModel.trim() },
+    { name: 'cerebras', key: s.cerebrasKey.trim(), model: s.cerebrasModel.trim() },
+  ].filter(p => p.key).map(p => ({ ...p, ...PROVIDERS[p.name] }));
 }
 
+// ---------- plain-language errors ----------
+class FriendlyError extends Error {}
+
+function httpError(label, status) {
+  if (status === 401 || status === 403) return new FriendlyError(`${label} key isn't valid. Check it in Settings.`);
+  if (status === 402) return new FriendlyError(`${label} needs billing on this account. Remove the ${label} key in Settings.`);
+  if (status === 404) return new FriendlyError(`${label} doesn't offer that model any more. Pick another in Settings > Advanced.`);
+  if (status === 429) return new FriendlyError(`${label} is rate-limiting you. Wait a few seconds.`);
+  if (status >= 500) return new FriendlyError(`${label} is having problems right now.`);
+  return new FriendlyError(`${label} returned an error (HTTP ${status}).`);
+}
+
+// ---------- answering ----------
 function buildPrompt(question, options) {
   return `Question: ${question || '(not shown)'}\nOptions:\n` +
     options.map((t, i) => `${i + 1}. ${t}`).join('\n') +
@@ -59,16 +78,17 @@ async function callProvider(p, question, options, timeoutMs) {
       delete body.reasoning_effort;
       res = await post();
     }
-    if (!res.ok) throw new Error(`${p.name} HTTP ${res.status}: ${(await res.text()).slice(0, 150)}`);
+    if (!res.ok) throw httpError(p.label, res.status);
 
     const data = await res.json();
     const content = data.choices?.[0]?.message?.content || '';
     const n = parseInt((content.match(/\d+/) || [])[0], 10);
     if (n >= 1 && n <= options.length) return { n, provider: p.name };
-    throw new Error(`${p.name} bad reply: ${content.slice(0, 80)}`);
+    throw new FriendlyError(`${p.label} gave an answer that isn't one of the options.`);
   } catch (e) {
-    if (e.name === 'AbortError') throw new Error(`${p.name} timeout`);
-    throw e;
+    if (e.name === 'AbortError') throw new FriendlyError(`${p.label} took too long to answer.`);
+    if (e instanceof FriendlyError) throw e;
+    throw new FriendlyError(`Couldn't reach ${p.label}. Check your internet connection.`);
   } finally {
     clearTimeout(timer);
   }
@@ -76,67 +96,113 @@ async function callProvider(p, question, options, timeoutMs) {
 
 async function solve(question, options) {
   const s = await getSettings();
-  const providers = providersFrom(s);
-  if (!providers.length) throw new Error('No API key set. Click the extension icon to add one.');
+  const providers = activeProviders(s);
+  if (!providers.length) throw new FriendlyError('Add your Groq key in the Menti Solver popup to start.');
 
-  let lastErr;
+  let last;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       return await Promise.any(providers.map(p => callProvider(p, question, options, s.timeoutMs)));
     } catch (e) {
-      lastErr = e;
+      last = e;
     }
   }
-  const msgs = lastErr?.errors ? lastErr.errors.map(e => e.message) : [String(lastErr)];
-  throw new Error(msgs.join(' | '));
+  const msgs = [...new Set((last?.errors || [last]).map(e => e?.message).filter(Boolean))];
+  throw new FriendlyError(msgs[0] || 'Couldn\'t get an answer.');
 }
 
-// Opens the TLS connection early so the first real question doesn't pay for the handshake.
-async function warmup() {
-  const providers = providersFrom(await getSettings());
-  for (const p of providers) {
-    fetch(`${p.base}/models`, { headers: { Authorization: `Bearer ${p.key}` } }).catch(() => {});
+// ---------- key validation ----------
+async function validateKey(provider, key) {
+  const p = PROVIDERS[provider];
+  if (!p) return { ok: false, message: 'Unknown provider.' };
+  if (!key) return { ok: false, message: 'Paste a key first.' };
+  try {
+    const res = await fetch(`${p.base}/models`, { headers: { Authorization: `Bearer ${key}` } });
+    if (res.ok) return { ok: true };
+    return { ok: false, message: httpError(p.label, res.status).message };
+  } catch (_) {
+    return { ok: false, message: `Couldn't reach ${p.label}. Check your internet connection.` };
   }
-  return providers.map(p => p.name);
 }
 
 async function testProviders() {
   const s = await getSettings();
-  const providers = providersFrom(s);
-  if (!providers.length) return [{ name: '-', ok: false, detail: 'No API key saved' }];
-  const q = 'What is 7 x 8?';
+  const providers = activeProviders(s);
+  if (!providers.length) return [{ label: 'Setup', ok: false, detail: 'No API key saved yet.' }];
   const opts = ['54', '56', '58', '64'];
   return Promise.all(providers.map(async p => {
     const t0 = performance.now();
     try {
-      const { n } = await callProvider(p, q, opts, Math.max(s.timeoutMs, 5000));
+      const { n } = await callProvider(p, 'What is 7 x 8?', opts, Math.max(s.timeoutMs, 5000));
       const ms = Math.round(performance.now() - t0);
-      return { name: p.name, ok: n === 2, detail: n === 2 ? `correct in ${ms} ms` : `answered ${opts[n - 1]} (wrong) in ${ms} ms` };
+      return { label: p.label, ok: n === 2, detail: n === 2 ? `correct in ${ms} ms` : `answered ${opts[n - 1]}, which is wrong (${ms} ms)` };
     } catch (e) {
-      return { name: p.name, ok: false, detail: e.message };
+      return { label: p.label, ok: false, detail: e.message };
     }
   }));
 }
 
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  if (msg.type === 'solve') {
-    solve(msg.question, msg.options)
-      .then(r => sendResponse({ ok: true, ...r }))
-      .catch(e => sendResponse({ ok: false, error: e.message || String(e) }));
-    return true;
+// Opens the TLS connection early so the first real question doesn't pay for the handshake.
+async function warmup() {
+  const providers = activeProviders(await getSettings());
+  for (const p of providers) {
+    fetch(`${p.base}/models`, { headers: { Authorization: `Bearer ${p.key}` } }).catch(() => {});
   }
-  if (msg.type === 'warmup') {
-    warmup().then(providers => sendResponse({ providers }));
-    return true;
-  }
-  if (msg.type === 'test') {
-    testProviders().then(results => sendResponse({ results }));
-    return true;
-  }
-  if (msg.type === 'ping') {
-    sendResponse({ ok: true });
-  }
-  return false;
+}
+
+// ---------- toolbar badge ----------
+async function refreshBadge() {
+  const s = await getSettings();
+  const hasKey = Boolean(s.groqKey || s.cerebrasKey);
+  let text = '', color = '#8E8E93', title = 'Menti Solver';
+  if (!hasKey) { text = '!'; color = '#FF9F0A'; title = 'Menti Solver: add an API key to start'; }
+  else if (s.enabled) { text = 'ON'; color = '#0071E3'; title = 'Menti Solver: on'; }
+  else { text = 'OFF'; color = '#8E8E93'; title = 'Menti Solver: off'; }
+  await chrome.action.setBadgeText({ text });
+  await chrome.action.setBadgeBackgroundColor({ color });
+  if (chrome.action.setBadgeTextColor) await chrome.action.setBadgeTextColor({ color: '#FFFFFF' });
+  await chrome.action.setTitle({ title });
+}
+
+// ---------- events ----------
+chrome.runtime.onInstalled.addListener(async ({ reason }) => {
+  const current = await chrome.storage.local.get(Object.keys(DEFAULTS));
+  await chrome.storage.local.set({ ...DEFAULTS, ...current }); // fill in any missing defaults
+  if (reason === 'install') chrome.tabs.create({ url: chrome.runtime.getURL('welcome.html') });
+  refreshBadge();
+});
+chrome.runtime.onStartup.addListener(refreshBadge);
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && (changes.enabled || changes.groqKey || changes.cerebrasKey)) refreshBadge();
 });
 
-chrome.action.onClicked.addListener(() => chrome.runtime.openOptionsPage());
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command !== 'toggle-solver') return;
+  const { enabled } = await getSettings();
+  chrome.storage.local.set({ enabled: !enabled });
+});
+
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg.type === 'solve') {
+    const t0 = performance.now();
+    solve(msg.question, msg.options)
+      .then(r => {
+        const ms = Math.round(performance.now() - t0);
+        chrome.storage.local.set({
+          lastAnswer: { question: msg.question, answer: msg.options[r.n - 1], ms: msg.detectedAt ? Math.round(Date.now() - msg.detectedAt) : ms, provider: r.provider, at: Date.now() },
+        });
+        sendResponse({ ok: true, ...r });
+      })
+      .catch(e => {
+        chrome.storage.local.set({ lastAnswer: { question: msg.question, error: e.message, at: Date.now() } });
+        sendResponse({ ok: false, error: e.message || String(e) });
+      });
+    return true;
+  }
+  if (msg.type === 'warmup') { warmup(); sendResponse({ ok: true }); return false; }
+  if (msg.type === 'validateKey') { validateKey(msg.provider, msg.key.trim()).then(sendResponse); return true; }
+  if (msg.type === 'test') { testProviders().then(results => sendResponse({ results })); return true; }
+  if (msg.type === 'ping') { sendResponse({ ok: true }); return false; }
+  return false;
+});

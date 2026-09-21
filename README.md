@@ -7,9 +7,10 @@ There are two editions that share the same detection and answering logic:
 | | Chrome extension | Python edition |
 |---|---|---|
 | Runs in | Your normal Chrome | A Chrome window opened by Python |
-| Setup | Load folder, paste key | Python + pip install |
-| Answers shown | On-page box + browser console | On-page box + terminal |
-| Best for | Everyday use | Tinkering, logging, extending in Python |
+| Setup | Load folder, guided key setup | Python + pip install |
+| Controls | Popup with on/off switch, shortcut, settings page | `.env` file |
+| Answers shown | On-page card + popup | On-page box + terminal |
+| Best for | Everyday use, sharing with friends | Tinkering, logging, extending in Python |
 
 A Tampermonkey userscript version is also included in `userscript/` if you prefer that.
 
@@ -51,17 +52,24 @@ or on GitHub click **Code → Download ZIP** and unzip it.
 
 ## Chrome extension
 
-1. Open `chrome://extensions` and turn on **Developer mode** (top right).
-2. Click **Load unpacked** and select the `extension/` folder.
-3. Pin **Menti Solver** from the puzzle-piece menu and click its icon. The settings page opens.
-4. Paste your Groq key (and Cerebras key if you have one), then click **Save & test keys**. You should see ✅ for each provider.
-5. Open [menti.com](https://www.menti.com) and join a quiz. A small box in the bottom-right should say **Menti Solver ready**.
+### Install (you or a friend)
 
-When options appear, the box shows **Thinking…**, then the answer and the time in ms, and the answer is clicked.
+1. Download **`menti-solver-extension-vX.Y.Z.zip`** from this repo's [Releases](../../releases) page and unzip it.
+2. Open `chrome://extensions` and turn on **Developer mode** (top right).
+3. Click **Load unpacked** and select the unzipped `extension` folder.
+4. A setup page opens automatically: get a free Groq key, paste it, pin the extension. About a minute.
 
-**Updating:** after changing any file, click the reload ↻ icon on the extension card in `chrome://extensions`, then refresh the menti.com tab.
+Everyone should use **their own** Groq key. Keys are free, and if friends share one key they share one rate limit, which runs out exactly when everyone in the same quiz is asking at once.
 
----
+**Updating:** download the new zip, replace the old folder, then click ↻ on the extension card in `chrome://extensions` and refresh any menti.com tab.
+
+### Using it
+
+- **Toolbar popup**: a large on/off switch, "Answer and click" or "Show answer only", and the last answer with its time.
+- **Toolbar badge**: `ON`, `OFF`, or `!` when no key is set.
+- **Shortcut**: `Alt+Shift+M` turns it on or off from any tab (change it at `chrome://extensions/shortcuts`).
+- **On the quiz page**: a small glass pill in the bottom-right shows the status. It opens into a card with the question, answer and time after every answer, or when you hover it, and has its own on/off switch.
+- **Settings**: keys are checked as you paste them, and models and timeout live under Advanced. A test button sends one sample question to each provider.
 
 ## Python edition
 
@@ -102,21 +110,22 @@ If you don't have Chrome installed, set `BROWSER_CHANNEL=` (empty) in `.env` and
 
 ---
 
-## Controls (both editions)
+## Keyboard shortcuts
 
-| Keys | Action |
-|---|---|
-| Option+P (Mac) / Alt+P | Pause / resume |
-| Option+D (Mac) / Alt+D | Copy page structure for debugging (Python: saved to `python/debug_structure.html`) |
+| Keys | Where | Action |
+|---|---|---|
+| Alt+Shift+M | Extension, any tab | Turn on / off |
+| Option+P (Mac) / Alt+P | Python edition | Pause / resume |
+| Option+D (Mac) / Alt+D | menti.com page | Copy page structure for debugging (Python: saved to `python/debug_structure.html`) |
 
 ## Configuration
 
 | Setting | Extension | Python `.env` | Default |
 |---|---|---|---|
-| Groq model | settings page | `GROQ_MODEL` | `openai/gpt-oss-20b` |
-| Cerebras model | settings page | `CEREBRAS_MODEL` | `gpt-oss-120b` |
-| Timeout per request | settings page (ms) | `TIMEOUT_SECONDS` | 2.5 s |
-| Auto-click | settings page | `AUTO_CLICK` | on |
+| Groq model | Settings > Advanced | `GROQ_MODEL` | `openai/gpt-oss-20b` |
+| Cerebras model | Settings > Advanced | `CEREBRAS_MODEL` | `gpt-oss-120b` |
+| Timeout per request | Settings > Advanced (ms) | `TIMEOUT_SECONDS` | 2.5 s |
+| Auto-click | Popup or Settings | `AUTO_CLICK` | on |
 | Browser | n/a | `BROWSER_CHANNEL` | `chrome` |
 
 Use `openai/gpt-oss-120b` on Groq if accuracy matters more than a few hundred milliseconds.
@@ -127,9 +136,10 @@ Use `openai/gpt-oss-120b` on Groq if accuracy matters more than a few hundred mi
 
 | Problem | Fix |
 |---|---|
-| No box appears on menti.com | Extension: reload it in `chrome://extensions` and refresh the tab. Python: make sure you're using the window it opened. |
-| "No API key set" | Extension: click the icon and save a key. Python: check `python/.env` exists and has `GROQ_API_KEY`. |
-| "Extension was reloaded" | Refresh the menti.com tab. |
+| No pill appears on menti.com | Extension: reload it in `chrome://extensions` and refresh the tab. Python: make sure you're using the window it opened. |
+| Badge shows `!` / "Needs an API key" | Extension: open the popup and click Set up. Python: check `python/.env` exists and has `GROQ_API_KEY`. |
+| "The extension was updated. Refresh this page." | Refresh the menti.com tab. |
+| Pill disappeared | The solver is off. Turn it on from the popup or with Alt+Shift+M. |
 | Shows the answer but doesn't click | Press Option/Alt+D and inspect the structure; the options may use unusual elements. |
 | Box never says "Thinking…" | Detection missed the options. Use Option/Alt+D to see what was detected. |
 | `HTTP 429` | Rate limit reached. Wait a minute, or add a second provider. |
@@ -142,10 +152,13 @@ Use `openai/gpt-oss-120b` on Groq if accuracy matters more than a few hundred mi
 menti-solver/
 ├── extension/            Chrome extension (Manifest V3)
 │   ├── manifest.json
-│   ├── background.js     API calls, provider race, connection warm-up
-│   ├── content.js        detection, overlay, clicking
-│   ├── options.html      settings page
-│   └── options.js
+│   ├── background.js     API calls, provider race, key checks, badge, shortcut
+│   ├── content.js        detection, clicking, on-page glass pill/card
+│   ├── popup.*           toolbar popup with the on/off switch
+│   ├── welcome.*         first-run setup
+│   ├── options.*         settings page
+│   ├── shared.js, ui.css, pages.css   shared components and design tokens
+│   └── icons/
 ├── python/               Python edition (Playwright)
 │   ├── menti_solver.py   browser launch, API race over HTTP/2, terminal output
 │   ├── detector.js       page-side detection, injected by Playwright

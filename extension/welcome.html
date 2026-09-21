@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Set up Menti Solver</title>
+  <link rel="icon" href="icons/icon-32.png">
+  <link rel="stylesheet" href="ui.css">
+  <link rel="stylesheet" href="pages.css">
+</head>
+<body>
+  <main class="page">
+    <header class="page-head">
+      <img src="icons/icon-128.png" alt="" width="56" height="56">
+      <h1 class="title-xl">Set up Menti Solver</h1>
+      <p class="lede">Three steps, about a minute. Your key stays in this browser.</p>
+    </header>
+
+    <ol class="steps">
+      <li class="step" id="step1">
+        <span class="step-mark" aria-hidden="true"><span class="num">1</span></span>
+        <div class="step-body">
+          <h2 class="title-md">Get a free Groq key</h2>
+          <p class="caption">Sign in to Groq, open API Keys and create a key. It’s free and doesn’t need a card.</p>
+          <a class="btn" id="getKey" href="https://console.groq.com/keys" target="_blank" rel="noopener">Open Groq console</a>
+        </div>
+      </li>
+
+      <li class="step" id="step2">
+        <span class="step-mark" aria-hidden="true"><span class="num">2</span></span>
+        <div class="step-body">
+          <h2 class="title-md"><label for="groqKey">Paste your key</label></h2>
+          <div class="key-row">
+            <div class="field has-btn">
+              <input id="groqKey" class="mono" type="password" placeholder="gsk_…" autocomplete="off" spellcheck="false">
+              <button class="icon-btn" id="toggleKey" type="button" aria-label="Show key" aria-pressed="false"></button>
+            </div>
+            <button class="btn primary" id="checkKey" type="button">Check key</button>
+          </div>
+          <p class="status info" id="keyStatus" role="status">Keys start with gsk_.</p>
+        </div>
+      </li>
+
+      <li class="step" id="step3">
+        <span class="step-mark" aria-hidden="true"><span class="num">3</span></span>
+        <div class="step-body">
+          <h2 class="title-md">Pin it and join a quiz</h2>
+          <p class="caption">Click the puzzle piece in Chrome’s toolbar, then the pin next to Menti Solver. Join any quiz on menti.com and it starts on its own.</p>
+          <a class="btn" href="https://www.menti.com" target="_blank" rel="noopener">Open menti.com</a>
+        </div>
+      </li>
+    </ol>
+
+    <p class="page-foot caption">Change keys, models and behaviour later in <a href="options.html">Settings</a>.</p>
+  </main>
+
+  <script src="shared.js"></script>
+  <script src="welcome.js"></script>
+</body>
+</html>

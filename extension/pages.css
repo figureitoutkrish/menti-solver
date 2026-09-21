@@ -1,0 +1,50 @@
+body { min-height: 100vh; }
+
+.page { max-width: 600px; margin: 0 auto; padding: 56px 20px 64px; }
+.page-head { display: grid; justify-items: start; gap: 10px; margin-bottom: 32px; }
+.page-head img { border-radius: 13px; margin-bottom: 6px; }
+.lede { font-size: 17px; line-height: 1.45; color: var(--text-2); max-width: 46ch; }
+.page-foot { margin-top: 32px; }
+
+/* ---------- setup steps (a real sequence, so numbers carry meaning) ---------- */
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.step {
+  display: grid; grid-template-columns: 32px 1fr; gap: 16px;
+  padding: 20px; border-radius: var(--radius-lg); background: var(--surface);
+}
+.step-body { display: grid; gap: 8px; justify-items: start; min-width: 0; }
+.step-body .caption { max-width: 52ch; }
+.step-body .btn { margin-top: 4px; }
+
+.step-mark {
+  display: grid; place-items: center; width: 28px; height: 28px; border-radius: 999px;
+  background: var(--fill); font-size: 13px; font-weight: 600; color: var(--text-2);
+  transition: background-color 250ms var(--ease), color 250ms var(--ease);
+}
+.step-mark svg { width: 16px; height: 16px; display: none; }
+.step.done .step-mark { background: var(--accent); color: #fff; }
+.step.done .step-mark .num { display: none; }
+.step.done .step-mark svg { display: block; }
+
+.key-row { display: flex; gap: 8px; width: 100%; margin-top: 4px; }
+.key-row .field { flex: 1; min-width: 0; }
+
+/* ---------- settings ---------- */
+.settings-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
+.settings-head .left { display: flex; align-items: center; gap: 12px; }
+.settings-head img { border-radius: 9px; }
+.saved { font-size: 13px; color: var(--text-2); opacity: 0; transition: opacity 200ms var(--ease); }
+.saved.show { opacity: 1; }
+
+.block { margin-bottom: 28px; }
+.block .caption.below { padding: 6px 16px 0; }
+.row .field { width: 100%; }
+.row .segmented { min-width: 260px; }
+.test-results { display: grid; gap: 6px; padding: 0 16px 14px; }
+
+@media (max-width: 520px) {
+  .page { padding-top: 32px; }
+  .key-row { flex-direction: column; }
+  .row { flex-wrap: wrap; }
+  .row .segmented { min-width: 0; width: 100%; }
+}

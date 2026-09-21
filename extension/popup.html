@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Menti Solver</title>
+  <link rel="stylesheet" href="ui.css">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header class="top">
+    <img src="icons/icon-32.png" alt="" width="20" height="20">
+    <h1 class="app-name">Menti Solver</h1>
+    <button class="icon-btn" id="openSettings" aria-label="Open settings" title="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </button>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="heroTitle">
+      <div class="hero-text">
+        <p class="title-xl" id="heroTitle">On</p>
+        <p class="hero-sub" id="heroSub">Checking…</p>
+      </div>
+      <button class="switch lg" id="enabled" role="switch" aria-checked="true" aria-labelledby="heroTitle" aria-describedby="heroSub">
+        <span class="thumb"></span>
+      </button>
+    </section>
+
+    <div class="callout" id="setup" hidden>
+      <p>Add your free Groq key to start answering.</p>
+      <button class="btn primary" id="openSetup">Set up</button>
+    </div>
+
+    <fieldset class="segmented" id="mode">
+      <legend class="sr-only">When an answer is found</legend>
+      <input type="radio" name="mode" id="modeClick" value="click">
+      <label for="modeClick">Answer and click</label>
+      <input type="radio" name="mode" id="modeShow" value="show">
+      <label for="modeShow">Show answer only</label>
+    </fieldset>
+
+    <section class="last" aria-labelledby="lastLabel">
+      <h2 class="caption" id="lastLabel">Last answer</h2>
+      <div class="last-card" id="lastCard" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span class="caption">Turn on or off from any tab</span>
+    <kbd id="shortcut">Alt+Shift+M</kbd>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>

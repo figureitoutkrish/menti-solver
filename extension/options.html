@@ -2,60 +2,112 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Menti Solver settings</title>
-  <style>
-    :root { color-scheme: light dark; }
-    body { font: 14px/1.5 -apple-system, system-ui, sans-serif; max-width: 520px; margin: 32px auto; padding: 0 16px; }
-    h1 { font-size: 20px; margin-bottom: 4px; }
-    p.sub { margin-top: 0; opacity: .7; }
-    label { display: block; margin-top: 16px; font-weight: 600; }
-    small { display: block; font-weight: 400; opacity: .7; }
-    input[type=text], input[type=password], input[type=number] {
-      width: 100%; box-sizing: border-box; padding: 8px; margin-top: 4px;
-      border: 1px solid #8884; border-radius: 6px; font: inherit; background: transparent;
-    }
-    .row { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-weight: 600; }
-    .buttons { margin-top: 24px; display: flex; gap: 8px; }
-    button { padding: 8px 16px; border-radius: 6px; border: 1px solid #8886; font: inherit; cursor: pointer; }
-    button.primary { background: #5b5bd6; color: #fff; border-color: #5b5bd6; }
-    #status { margin-top: 16px; white-space: pre-line; }
-  </style>
+  <link rel="icon" href="icons/icon-32.png">
+  <link rel="stylesheet" href="ui.css">
+  <link rel="stylesheet" href="pages.css">
 </head>
 <body>
-  <h1>Menti Solver</h1>
-  <p class="sub">Keys are stored only in this browser (chrome.storage.local).</p>
+  <main class="page">
+    <header class="settings-head">
+      <div class="left">
+        <img src="icons/icon-48.png" alt="" width="36" height="36">
+        <h1 class="title-lg">Settings</h1>
+      </div>
+      <span class="saved" id="saved" role="status" aria-live="polite">Saved</span>
+    </header>
 
-  <label>Groq API key
-    <small>Required unless you use Cerebras. Get one at console.groq.com</small>
-    <input id="groqKey" type="password" placeholder="gsk_..." autocomplete="off">
-  </label>
+    <section class="block" aria-labelledby="keysLabel">
+      <h2 class="section-label" id="keysLabel">API keys</h2>
+      <div class="group">
+        <div class="row stack">
+          <label class="row-label" for="groqKey">Groq</label>
+          <div class="field has-btn">
+            <input id="groqKey" class="mono" type="password" placeholder="gsk_…" autocomplete="off" spellcheck="false">
+            <button class="icon-btn" id="toggleGroq" type="button"></button>
+          </div>
+          <p class="status info" id="groqStatus" role="status">Free at <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com</a></p>
+        </div>
+        <div class="row stack">
+          <label class="row-label" for="cerebrasKey">Cerebras <span class="caption">optional</span></label>
+          <div class="field has-btn">
+            <input id="cerebrasKey" class="mono" type="password" placeholder="csk-…" autocomplete="off" spellcheck="false">
+            <button class="icon-btn" id="toggleCerebras" type="button"></button>
+          </div>
+          <p class="status info" id="cerebrasStatus" role="status">Asked at the same time as Groq. The faster answer wins.</p>
+        </div>
+      </div>
+    </section>
 
-  <label>Cerebras API key
-    <small>Optional backup. Both are asked at once and the fastest answer wins. cloud.cerebras.ai</small>
-    <input id="cerebrasKey" type="password" placeholder="csk-..." autocomplete="off">
-  </label>
+    <section class="block" aria-labelledby="behaviourLabel">
+      <h2 class="section-label" id="behaviourLabel">Behaviour</h2>
+      <div class="group">
+        <div class="row">
+          <div>
+            <p class="row-label" id="enabledLabel">Solve quizzes</p>
+            <p class="row-help">When off, nothing is sent to Groq or clicked.</p>
+          </div>
+          <button class="switch" id="enabled" role="switch" aria-checked="true" aria-labelledby="enabledLabel"><span class="thumb"></span></button>
+        </div>
+        <div class="row">
+          <p class="row-label" id="modeLabel">When an answer is found</p>
+          <fieldset class="segmented" id="mode" aria-labelledby="modeLabel">
+            <input type="radio" name="mode" id="modeClick" value="click">
+            <label for="modeClick">Answer and click</label>
+            <input type="radio" name="mode" id="modeShow" value="show">
+            <label for="modeShow">Show answer only</label>
+          </fieldset>
+        </div>
+        <div class="row">
+          <div>
+            <p class="row-label">Keyboard shortcut</p>
+            <p class="row-help">Turns the solver on or off from any tab.</p>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <kbd id="shortcut">Alt+Shift+M</kbd>
+            <a href="#" id="changeShortcut">Change</a>
+          </div>
+        </div>
+      </div>
+    </section>
 
-  <label>Groq model
-    <small>openai/gpt-oss-20b is fastest; openai/gpt-oss-120b is more accurate</small>
-    <input id="groqModel" type="text">
-  </label>
+    <section class="block">
+      <div class="group">
+        <details class="advanced">
+          <summary>Advanced <span id="chev"></span></summary>
+          <div class="row stack">
+            <label class="row-label" for="groqModel">Groq model</label>
+            <div class="field"><input id="groqModel" class="mono" type="text" spellcheck="false"></div>
+            <p class="row-help">openai/gpt-oss-20b is fastest. openai/gpt-oss-120b is more accurate on hard questions.</p>
+          </div>
+          <div class="row stack">
+            <label class="row-label" for="cerebrasModel">Cerebras model</label>
+            <div class="field"><input id="cerebrasModel" class="mono" type="text" spellcheck="false"></div>
+          </div>
+          <div class="row stack">
+            <label class="row-label" for="timeoutMs">Give up on a request after (ms)</label>
+            <div class="field"><input id="timeoutMs" type="number" min="500" step="100"></div>
+          </div>
+        </details>
+      </div>
+    </section>
 
-  <label>Cerebras model
-    <input id="cerebrasModel" type="text">
-  </label>
+    <section class="block" aria-labelledby="testLabel">
+      <h2 class="section-label" id="testLabel">Test</h2>
+      <div class="group">
+        <div class="row">
+          <p class="row-help" style="margin:0">Sends one sample question to each provider and shows the time.</p>
+          <button class="btn primary" id="runTest" type="button">Run test</button>
+        </div>
+        <div class="test-results" id="testResults" role="status" aria-live="polite"></div>
+      </div>
+    </section>
 
-  <label>Timeout per request (ms)
-    <input id="timeoutMs" type="number" min="500" step="100">
-  </label>
+    <p class="caption">New here? Open the <a href="welcome.html">setup guide</a>.</p>
+  </main>
 
-  <div class="row"><input id="autoClick" type="checkbox"> Click the answer automatically</div>
-
-  <div class="buttons">
-    <button id="save" class="primary">Save</button>
-    <button id="test">Save &amp; test keys</button>
-  </div>
-  <div id="status"></div>
-
+  <script src="shared.js"></script>
   <script src="options.js"></script>
 </body>
 </html>

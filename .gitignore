@@ -1,0 +1,18 @@
+# secrets
+.env
+*.env
+!.env.example
+
+# python
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# browser profile + debug output from the Python edition
+python/.browser-profile/
+python/debug_structure.html
+
+# misc
+.DS_Store
+*.zip

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Menti Solver settings</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font: 14px/1.5 -apple-system, system-ui, sans-serif; max-width: 520px; margin: 32px auto; padding: 0 16px; }
+    h1 { font-size: 20px; margin-bottom: 4px; }
+    p.sub { margin-top: 0; opacity: .7; }
+    label { display: block; margin-top: 16px; font-weight: 600; }
+    small { display: block; font-weight: 400; opacity: .7; }
+    input[type=text], input[type=password], input[type=number] {
+      width: 100%; box-sizing: border-box; padding: 8px; margin-top: 4px;
+      border: 1px solid #8884; border-radius: 6px; font: inherit; background: transparent;
+    }
+    .row { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-weight: 600; }
+    .buttons { margin-top: 24px; display: flex; gap: 8px; }
+    button { padding: 8px 16px; border-radius: 6px; border: 1px solid #8886; font: inherit; cursor: pointer; }
+    button.primary { background: #5b5bd6; color: #fff; border-color: #5b5bd6; }
+    #status { margin-top: 16px; white-space: pre-line; }
+  </style>
+</head>
+<body>
+  <h1>Menti Solver</h1>
+  <p class="sub">Keys are stored only in this browser (chrome.storage.local).</p>
+
+  <label>Groq API key
+    <small>Required unless you use Cerebras. Get one at console.groq.com</small>
+    <input id="groqKey" type="password" placeholder="gsk_..." autocomplete="off">
+  </label>
+
+  <label>Cerebras API key
+    <small>Optional backup. Both are asked at once and the fastest answer wins. cloud.cerebras.ai</small>
+    <input id="cerebrasKey" type="password" placeholder="csk-..." autocomplete="off">
+  </label>
+
+  <label>Groq model
+    <small>openai/gpt-oss-20b is fastest; openai/gpt-oss-120b is more accurate</small>
+    <input id="groqModel" type="text">
+  </label>
+
+  <label>Cerebras model
+    <input id="cerebrasModel" type="text">
+  </label>
+
+  <label>Timeout per request (ms)
+    <input id="timeoutMs" type="number" min="500" step="100">
+  </label>
+
+  <div class="row"><input id="autoClick" type="checkbox"> Click the answer automatically</div>
+
+  <div class="buttons">
+    <button id="save" class="primary">Save</button>
+    <button id="test">Save &amp; test keys</button>
+  </div>
+  <div id="status"></div>
+
+  <script src="options.js"></script>
+</body>
+</html>

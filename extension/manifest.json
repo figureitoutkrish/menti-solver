@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Menti Solver",
+  "version": "1.2.0",
+  "description": "Reads Mentimeter quiz questions from the page, asks a fast LLM (Groq / Cerebras) and clicks the answer.",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://api.groq.com/*",
+    "https://api.cerebras.ai/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.menti.com/*", "https://menti.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_page": "options.html",
+  "action": {
+    "default_title": "Menti Solver settings"
+  }
+}

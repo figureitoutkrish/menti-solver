@@ -117,13 +117,13 @@ If you don't have Chrome installed, set `BROWSER_CHANNEL=` (empty) in `.env` and
 
 **Normal** (default) holds the click for about 2 seconds, varying by up to half a second. **God mode** clicks as soon as the answer arrives and is unlocked with a password from the toolbar popup.
 
-A build can ship with the password fixed in `extension/config.js`, in which case it can't be changed from the interface. Otherwise it can be set in Settings. Only a hash is ever stored; the password itself is not.
+The password is set in Settings. Only a hash is ever stored; the password itself is not.
 
 This is a lock, not real security: an extension runs on the user's own machine, so anyone who edits the source can reach god mode regardless.
 
 ## Builds
 
-- **Repo source** includes god mode (instant click). It is gated by a password set in `extension/background.js` (`CACHE_TAG`), which is left empty here.
+- **Repo source** includes god mode (instant click). It is unlocked with a password you set in Settings.
 - **Published release** is the normal build: god mode is removed and it waits about 2 seconds before clicking.
 
 ## Keyboard shortcuts

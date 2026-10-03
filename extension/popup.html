@@ -39,6 +39,28 @@
       <label for="modeShow">Show answer only</label>
     </fieldset>
 
+    <section class="speed" aria-labelledby="speedLabel">
+      <div class="speed-head">
+        <h2 class="caption" id="speedLabel">Speed</h2>
+        <span class="caption" id="speedNote"></span>
+      </div>
+      <fieldset class="segmented" id="speed">
+        <legend class="sr-only">Answer speed</legend>
+        <input type="radio" name="speed" id="speedNormal" value="normal">
+        <label for="speedNormal">Normal</label>
+        <input type="radio" name="speed" id="speedGod" value="god">
+        <label for="speedGod"><span class="god-label" id="godLabel">God mode</span></label>
+      </fieldset>
+      <form class="unlock" id="unlock" hidden>
+        <div class="field has-btn">
+          <input id="godPass" type="password" placeholder="Password" autocomplete="off" spellcheck="false">
+          <button class="icon-btn" id="toggleGodPass" type="button"></button>
+        </div>
+        <button class="btn primary" id="unlockBtn" type="submit">Unlock</button>
+      </form>
+      <p class="status info" id="unlockStatus" role="status"></p>
+    </section>
+
     <section class="last" aria-labelledby="lastLabel">
       <h2 class="caption" id="lastLabel">Last answer</h2>
       <div class="last-card" id="lastCard" aria-live="polite"></div>
@@ -50,6 +72,7 @@
     <kbd id="shortcut">Alt+Shift+M</kbd>
   </footer>
 
+  <script src="shared.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

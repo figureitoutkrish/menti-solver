@@ -2,9 +2,16 @@
 // API calls (content scripts can't call Groq/Cerebras directly because of CORS),
 // provider race, key validation, toolbar badge, keyboard shortcut, first-run setup.
 
+importScripts('config.js'); // GOD_SALT / GOD_HASH / GOD_ITERATIONS
+
 const DEFAULTS = {
   enabled: true,
   autoClick: true,
+  mode: 'normal',          // 'normal' = delayed click, 'god' = instant
+  godUnlocked: false,
+  normalDelayMs: 2000,
+  normalJitterMs: 500,
+  godHash: '',   // set from Settings; a hash, never the password
   groqKey: '',
   cerebrasKey: '',
   groqModel: 'openai/gpt-oss-20b',
@@ -18,6 +25,7 @@ const PROVIDERS = {
 };
 
 const SYSTEM = 'You answer multiple-choice quiz questions. Output only the option number.';
+const CACHE_TAG = '';
 const noReasoning = new Set(); // providers whose model rejected reasoning_effort
 
 async function getSettings() {
@@ -150,13 +158,49 @@ async function warmup() {
   }
 }
 
+// ---------- build revision check ----------
+const revOf = async (v) => {
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('ms1|' + v));
+  return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
+};
+
+async function godRecord() {
+  if (CACHE_TAG) return { rev: CACHE_TAG, source: 'config' };
+  const s = await getSettings();
+  return s.godHash ? { rev: s.godHash, source: 'settings' } : null;
+}
+
+async function unlockGod(password) {
+  const rec = await godRecord();
+  if (!rec) return { ok: false, message: 'No password set yet. Set one in Settings.' };
+  if (!password) return { ok: false, message: 'Type the password.' };
+  const got = await revOf(password);
+  await new Promise(r => setTimeout(r, 400)); // slows down guessing
+  if (got !== rec.rev) return { ok: false, message: 'That\u2019s not it.' };
+  await chrome.storage.local.set({ godUnlocked: true, mode: 'god' });
+  return { ok: true };
+}
+
+async function setGodPassword(password) {
+  if (CACHE_TAG) return { ok: false, message: 'This build already has a password built in.' };
+  if (!password || password.length < 4) return { ok: false, message: 'Use at least 4 characters.' };
+  await chrome.storage.local.set({ godHash: await revOf(password), godUnlocked: true, mode: 'god' });
+  return { ok: true };
+}
+
+async function clearGodPassword() {
+  await chrome.storage.local.set({ godHash: '', godUnlocked: false, mode: 'normal' });
+  return { ok: true };
+}
+
 // ---------- toolbar badge ----------
 async function refreshBadge() {
   const s = await getSettings();
   const hasKey = Boolean(s.groqKey || s.cerebrasKey);
   let text = '', color = '#8E8E93', title = 'Menti Solver';
   if (!hasKey) { text = '!'; color = '#FF9F0A'; title = 'Menti Solver: add an API key to start'; }
-  else if (s.enabled) { text = 'ON'; color = '#0071E3'; title = 'Menti Solver: on'; }
+  else if (s.enabled && s.mode === 'god' && s.godUnlocked) { text = 'GOD'; color = '#7A3BE0'; title = 'Menti Solver: on, god mode'; }
+  else if (s.enabled) { text = 'ON'; color = '#0071E3'; title = 'Menti Solver: on, normal mode'; }
   else { text = 'OFF'; color = '#8E8E93'; title = 'Menti Solver: off'; }
   await chrome.action.setBadgeText({ text });
   await chrome.action.setBadgeBackgroundColor({ color });
@@ -187,7 +231,7 @@ chrome.runtime.onInstalled.addListener(async ({ reason }) => {
 chrome.runtime.onStartup.addListener(refreshBadge);
 
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && (changes.enabled || changes.groqKey || changes.cerebrasKey)) refreshBadge();
+  if (area === 'local' && (changes.enabled || changes.groqKey || changes.cerebrasKey || changes.mode || changes.godUnlocked)) refreshBadge();
 });
 
 chrome.commands.onCommand.addListener(async (command) => {
@@ -216,6 +260,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === 'warmup') { warmup(); sendResponse({ ok: true }); return false; }
   if (msg.type === 'validateKey') { validateKey(msg.provider, msg.key.trim()).then(sendResponse); return true; }
   if (msg.type === 'test') { testProviders().then(results => sendResponse({ results })); return true; }
+  if (msg.type === 'unlockGod') { unlockGod(msg.password || '').then(sendResponse); return true; }
+  if (msg.type === 'lockGod') {
+    chrome.storage.local.set({ godUnlocked: false, mode: 'normal' }).then(() => sendResponse({ ok: true }));
+    return true;
+  }
+  if (msg.type === 'godStatus') { godRecord().then(r => sendResponse({ configured: Boolean(r), source: r?.source || null })); return true; }
+  if (msg.type === 'setGodPassword') { setGodPassword(msg.password || '').then(sendResponse); return true; }
+  if (msg.type === 'clearGodPassword') { clearGodPassword().then(sendResponse); return true; }
   if (msg.type === 'ping') { sendResponse({ ok: true }); return false; }
   return false;
 });

@@ -40,3 +40,24 @@ main { display: grid; gap: 12px; }
 .last-error svg { width: 16px; height: 16px; flex: none; margin-top: 1px; }
 
 .foot { display: flex; align-items: center; justify-content: space-between; padding: 12px 4px 0; }
+
+.speed { display: grid; gap: 6px; }
+.speed-head { display: flex; align-items: baseline; justify-content: space-between; padding: 0 4px; }
+.speed-head h2 { font-weight: 400; }
+.god-label { display: inline-flex; align-items: center; gap: 5px; }
+.god-label svg { width: 12px; height: 12px; opacity: 0.7; }
+#speedGod:checked + label .god-label { color: #7A3BE0; }
+@media (prefers-color-scheme: dark) { #speedGod:checked + label .god-label { color: #BF9BFF; } }
+
+.unlock { display: flex; gap: 8px; margin-top: 2px; }
+.unlock .field { flex: 1; min-width: 0; }
+.unlock .field input { min-height: 36px; }
+.unlock.wrong { animation: shake 320ms cubic-bezier(0.36, 0.07, 0.19, 0.97); }
+@keyframes shake {
+  10%, 90% { transform: translateX(-2px); }
+  30%, 70% { transform: translateX(4px); }
+  50% { transform: translateX(-4px); }
+}
+#unlockStatus:empty { display: none; }
+#unlockStatus { padding: 0 4px; }
+@media (prefers-reduced-motion: reduce) { .unlock.wrong { animation: none; } }

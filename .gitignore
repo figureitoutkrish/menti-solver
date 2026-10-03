@@ -16,3 +16,6 @@ python/debug_structure.html
 # misc
 .DS_Store
 *.zip
+
+# release zips
+builds/

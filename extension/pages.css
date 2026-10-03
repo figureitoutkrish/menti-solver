@@ -48,3 +48,7 @@ body { min-height: 100vh; }
   .row { flex-wrap: wrap; }
   .row .segmented { min-width: 0; width: 100%; }
 }
+
+.unlock { display: flex; gap: 8px; width: 100%; }
+.unlock .field { flex: 1; min-width: 0; }
+#godStatusMsg:empty { display: none; }

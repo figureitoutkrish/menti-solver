@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Menti Solver",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "Reads Mentimeter quiz questions from the page, asks a fast LLM (Groq / Cerebras) and clicks the answer.",
   "icons": {
     "16": "icons/icon-16.png",

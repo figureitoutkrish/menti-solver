@@ -72,6 +72,45 @@
       </div>
     </section>
 
+    <section class="block" aria-labelledby="speedLabel">
+      <h2 class="section-label" id="speedLabel">Speed</h2>
+      <div class="group">
+        <div class="row">
+          <div>
+            <p class="row-label" id="modeRowLabel">Mode</p>
+            <p class="row-help" id="modeHelp">Normal waits about 2 s before clicking. God mode clicks straight away.</p>
+          </div>
+          <fieldset class="segmented" id="speed" aria-labelledby="modeRowLabel">
+            <input type="radio" name="speed" id="speedNormal" value="normal">
+            <label for="speedNormal">Normal</label>
+            <input type="radio" name="speed" id="speedGod" value="god">
+            <label for="speedGod">God mode</label>
+          </fieldset>
+        </div>
+        <div class="row stack">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
+            <div>
+              <p class="row-label">God-mode password</p>
+              <p class="row-help" id="godHelp">Only a salted hash is stored. The password itself is never saved.</p>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <button class="btn" id="lockGod" type="button" hidden>Lock again</button>
+              <button class="btn" id="setGodBtn" type="button">Set password</button>
+            </div>
+          </div>
+          <form class="unlock" id="godForm" hidden>
+            <div class="field has-btn">
+              <input id="godPass" type="password" placeholder="New password" autocomplete="new-password" spellcheck="false">
+              <button class="icon-btn" id="toggleGodPass" type="button"></button>
+            </div>
+            <button class="btn primary" id="saveGod" type="submit">Save</button>
+            <button class="btn" id="removeGod" type="button" hidden>Remove</button>
+          </form>
+          <p class="status info" id="godStatusMsg" role="status"></p>
+        </div>
+      </div>
+    </section>
+
     <section class="block">
       <div class="group">
         <details class="advanced">
@@ -88,6 +127,16 @@
           <div class="row stack">
             <label class="row-label" for="timeoutMs">Give up on a request after (ms)</label>
             <div class="field"><input id="timeoutMs" type="number" min="500" step="100"></div>
+          </div>
+          <div class="row stack">
+            <label class="row-label" for="normalDelayMs">Normal mode delay (ms)</label>
+            <div class="field"><input id="normalDelayMs" type="number" min="0" step="100"></div>
+            <p class="row-help">How long to hold the click in normal mode.</p>
+          </div>
+          <div class="row stack">
+            <label class="row-label" for="normalJitterMs">Random variation (± ms)</label>
+            <div class="field"><input id="normalJitterMs" type="number" min="0" step="100"></div>
+            <p class="row-help">The delay changes by up to this much each question, so it isn’t identical every time.</p>
           </div>
         </details>
       </div>

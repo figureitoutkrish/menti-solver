@@ -23,6 +23,11 @@
   let enabled = true;
   let autoClick = true;
   let hasKey = true;
+  let mode = 'normal';        // 'normal' = delayed click, 'god' = instant
+  let godUnlocked = false;
+  let normalDelayMs = 2000;
+  let normalJitterMs = 500;
+  const godActive = () => mode === 'god' && godUnlocked;
   let busyKey = null;
   const handled = new Set();
   const failures = new Map();
@@ -104,6 +109,26 @@
       /* hidden when switched off (after a short "Off" confirmation) */
       .wrap.gone .pill, .wrap.gone .card { opacity: 0; transform: translateY(8px) scale(0.96); filter: blur(4px); pointer-events: none; }
 
+      .c-row .hint { font-style: normal; font-weight: 400; color: var(--text-2); }
+      .sw.god[aria-checked="true"] { background: #7A3BE0; }
+      .pw { display: flex; gap: 6px; margin-top: 10px; }
+      .pw input {
+        flex: 1; min-width: 0; height: 30px; padding: 0 10px; border-radius: 8px;
+        border: 1px solid var(--fill); background: rgba(127,127,127,0.12); color: var(--text);
+        font: inherit; outline: none;
+      }
+      .pw input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+      .pw button {
+        height: 30px; padding: 0 12px; border: 0; border-radius: 8px; cursor: pointer;
+        background: #0071E3; color: #fff; font: inherit; font-weight: 600;
+      }
+      .pw.wrong { animation: shake 320ms cubic-bezier(0.36, 0.07, 0.19, 0.97); }
+      @keyframes shake { 10%,90% { transform: translateX(-2px);} 30%,70% { transform: translateX(3px);} 50% { transform: translateX(-3px);} }
+      .pw-msg { margin-top: 6px; font-size: 12px; color: var(--text-2); }
+      .pw-msg:empty { display: none; }
+      .pw-msg.err { color: var(--danger); }
+      .pw-msg.ok { color: var(--accent); }
+
       .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
       @media (prefers-reduced-motion: reduce) {
@@ -125,6 +150,12 @@
         <p class="c-a"></p>
         <div class="c-meta"></div>
         <div class="c-row"><span id="swl">Solver</span><button class="sw" role="switch" aria-checked="true" aria-labelledby="swl"><span class="t"></span></button></div>
+        <div class="c-row"><span id="gwl">God mode <em class="hint">no delay</em></span><button class="sw god" id="godSw" role="switch" aria-checked="false" aria-labelledby="gwl"><span class="t"></span></button></div>
+        <form class="pw" id="pwForm" hidden>
+          <input id="pwInput" type="password" placeholder="Password" autocomplete="off" spellcheck="false">
+          <button type="submit" id="pwBtn">Unlock</button>
+        </form>
+        <p class="pw-msg" id="pwMsg"></p>
       </div>
       <div class="pill glass">
         <span class="ind" aria-hidden="true"></span>
@@ -139,7 +170,19 @@
   const ui = {
     wrap: $('.wrap'), ind: $('.ind'), label: $('.label'), pms: $('.pms'),
     q: $('.c-q'), a: $('.c-a'), meta: $('.c-meta'), sw: $('.sw'), live: $('.sr'),
+    godSw: $('#godSw'), pwForm: $('#pwForm'), pwInput: $('#pwInput'), pwBtn: $('#pwBtn'), pwMsg: $('#pwMsg'),
   };
+  let godConfigured = false;
+
+  function paintGod() {
+    ui.godSw.setAttribute('aria-checked', String(godActive()));
+    if (godActive()) { ui.pwForm.hidden = true; ui.pwMsg.textContent = ''; }
+  }
+
+  function pwSay(kind, text) {
+    ui.pwMsg.className = `pw-msg ${kind}`;
+    ui.pwMsg.textContent = text;
+  }
 
   const IND = {
     ready: '<span class="dot"></span>',
@@ -166,6 +209,7 @@
     ui.a.classList.toggle('err', state === 'error');
     ui.meta.replaceChildren(...meta.map(t => Object.assign(document.createElement('span'), { textContent: t })));
     ui.sw.setAttribute('aria-checked', String(enabled));
+    ui.godSw.setAttribute('aria-checked', String(godActive()));
     if (announce) ui.live.textContent = announce;
 
     clearTimeout(goneTimer);
@@ -176,7 +220,11 @@
   function showIdle() {
     if (!hasKey) return setUI('error', { label: 'Needs an API key', question: 'Open the Menti Solver popup in the toolbar and add your Groq key.', answer: 'Not set up yet' });
     if (!enabled) return setUI('off', { label: 'Off', question: 'Turn it back on here, from the toolbar, or with the shortcut.', answer: 'Solver is off', announce: 'Menti Solver off' });
-    setUI('ready', { label: 'Ready', question: 'Waiting for the next question.', answer: 'Watching this quiz', announce: 'Menti Solver on' });
+    setUI('ready', {
+      label: godActive() ? 'Ready, god mode' : 'Ready',
+      question: godActive() ? 'Clicks the moment the answer arrives.' : `Waits about ${(normalDelayMs / 1000).toFixed(1)} s before clicking.`,
+      answer: 'Watching this quiz', announce: 'Menti Solver on',
+    });
   }
 
   ui.sw.addEventListener('click', () => {
@@ -184,6 +232,46 @@
     enabled = !enabled;
     ui.sw.setAttribute('aria-checked', String(enabled)); // instant feedback
     chrome.storage.local.set({ enabled }).catch(() => {});
+  });
+
+  ui.godSw.addEventListener('click', () => {
+    if (!contextValid()) { orphaned(); return; }
+    if (godActive()) {                       // turn it back to normal
+      chrome.storage.local.set({ mode: 'normal' });
+      return;
+    }
+    if (godUnlocked) {                       // already unlocked on this machine
+      chrome.storage.local.set({ mode: 'god' });
+      return;
+    }
+    if (!godConfigured) { pwSay('err', 'No password set for this copy.'); return; }
+    ui.pwForm.hidden = !ui.pwForm.hidden;    // ask for the password
+    pwSay('', '');
+    if (!ui.pwForm.hidden) ui.pwInput.focus();
+  });
+
+  ui.pwForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    ui.pwBtn.disabled = true;
+    pwSay('', 'Checking…');
+    try {
+      const res = await send({ type: 'unlockGod', password: ui.pwInput.value });
+      ui.pwInput.value = '';
+      if (res?.ok) {
+        ui.pwForm.hidden = true;
+        pwSay('ok', 'God mode on. No delay.');
+      } else {
+        pwSay('err', res?.message || 'That’s not it.');
+        ui.pwForm.classList.remove('wrong');
+        void ui.pwForm.offsetWidth;
+        ui.pwForm.classList.add('wrong');
+        ui.pwInput.focus();
+      }
+    } catch (err) {
+      if (err instanceof OrphanError) orphaned(); else pwSay('err', err.message);
+    } finally {
+      ui.pwBtn.disabled = false;
+    }
   });
 
   // ================= detection =================
@@ -264,6 +352,47 @@
     if (btn) clickEl(btn);
   }
 
+  let pending = null; // { timer, interval }
+
+  function cancelPending() {
+    if (!pending) return;
+    clearTimeout(pending.timer);
+    clearInterval(pending.interval);
+    pending = null;
+  }
+
+  /** Normal mode: hold the click for ~2s (jittered) so it doesn't look machine-timed. */
+  function scheduleClick(opts, n, answer, q, ms, provider) {
+    cancelPending();
+    const jitter = (Math.random() * 2 - 1) * normalJitterMs;
+    const wait = Math.max(300, Math.round(normalDelayMs + jitter));
+    const clickAt = Date.now() + wait;
+
+    const paint = () => {
+      const left = Math.max(0, clickAt - Date.now());
+      setUI('answered', {
+        label: answer, ms: `in ${(left / 1000).toFixed(1)} s`, question: q, answer,
+        meta: [`${ms} ms`, provider === 'cerebras' ? 'Cerebras' : 'Groq', `Clicking in ${(left / 1000).toFixed(1)} s`],
+      });
+    };
+    paint();
+
+    pending = {
+      interval: setInterval(paint, 100),
+      timer: setTimeout(() => {
+        clearInterval(pending?.interval);
+        pending = null;
+        if (dead || !enabled) return;
+        clickAnswer(opts, n, answer);
+        setUI('answered', {
+          label: answer, ms: `${ms} ms`, question: q, answer,
+          meta: [`${ms} ms`, provider === 'cerebras' ? 'Cerebras' : 'Groq', `Clicked after ${(wait / 1000).toFixed(1)} s`],
+          announce: `Answer: ${answer}`,
+        });
+      }, wait),
+    };
+  }
+
   function clickAnswer(opts, n, answer) {
     let el = opts[n - 1];
     if (!el || !el.isConnected) el = (findOptions() || []).find(e => textOf(e) === answer);
@@ -302,6 +431,7 @@
     dead = true;
     observer?.disconnect();
     timers.forEach(clearInterval);
+    cancelPending();
     document.removeEventListener('keydown', onKeydown);
     document.removeEventListener('menti-solver:takeover', onTakeover);
     if (!keepUI) host.remove();
@@ -342,14 +472,24 @@
       const ms = Math.round(performance.now() - t0);
       const answer = texts[res.n - 1];
       handled.add(key);
-      const clicked = autoClick;
-      if (clicked) clickAnswer(opts, res.n, answer);
+      cancelPending();
 
-      setUI('answered', {
-        label: answer, ms: `${ms} ms`, question: q, answer,
-        meta: [`${ms} ms`, res.provider === 'cerebras' ? 'Cerebras' : 'Groq', clicked ? 'Clicked' : 'Not clicked'],
-        announce: `Answer: ${answer}`,
-      });
+      if (autoClick && godActive()) {
+        clickAnswer(opts, res.n, answer);
+        setUI('answered', {
+          label: answer, ms: `${ms} ms`, question: q, answer,
+          meta: [`${ms} ms`, res.provider === 'cerebras' ? 'Cerebras' : 'Groq', 'Clicked'],
+          announce: `Answer: ${answer}`,
+        });
+      } else if (autoClick) {
+        scheduleClick(opts, res.n, answer, q, ms, res.provider);
+      } else {
+        setUI('answered', {
+          label: answer, ms: `${ms} ms`, question: q, answer,
+          meta: [`${ms} ms`, res.provider === 'cerebras' ? 'Cerebras' : 'Groq', 'Not clicked'],
+          announce: `Answer: ${answer}`,
+        });
+      }
       flash();
       console.log(`[Menti Solver] ${ms} ms (${res.provider}) | Q: ${q} | A: ${res.n}. ${answer}`);
     } catch (e) {
@@ -381,17 +521,27 @@
   }, 20000));
 
   // ================= settings sync =================
-  chrome.storage.local.get({ enabled: true, autoClick: true, groqKey: '', cerebrasKey: '' }).then(s => {
+  chrome.storage.local.get({ enabled: true, autoClick: true, groqKey: '', cerebrasKey: '', mode: 'normal', godUnlocked: false, normalDelayMs: 2000, normalJitterMs: 500 }).then(s => {
     enabled = s.enabled;
     autoClick = s.autoClick;
+    mode = s.mode;
+    godUnlocked = s.godUnlocked;
+    normalDelayMs = s.normalDelayMs;
+    normalJitterMs = s.normalJitterMs;
     hasKey = Boolean(s.groqKey || s.cerebrasKey);
     showIdle();
+    paintGod();
+    send({ type: 'godStatus' }).then(r => { godConfigured = r?.configured === true; }).catch(() => {});
     if (enabled && hasKey) { send({ type: 'warmup' }).catch(() => {}); tick(); }
   });
 
   chrome.storage.onChanged.addListener((ch, area) => {
     if (area !== 'local' || dead) return;
     if (ch.autoClick) autoClick = ch.autoClick.newValue;
+    if (ch.mode) { mode = ch.mode.newValue; paintGod(); if (!busyKey && !pending) showIdle(); }
+    if (ch.godUnlocked) { godUnlocked = ch.godUnlocked.newValue; paintGod(); if (!busyKey && !pending) showIdle(); }
+    if (ch.normalDelayMs) normalDelayMs = ch.normalDelayMs.newValue;
+    if (ch.normalJitterMs) normalJitterMs = ch.normalJitterMs.newValue;
     if (ch.groqKey || ch.cerebrasKey) {
       chrome.storage.local.get({ groqKey: '', cerebrasKey: '' }).then(s => {
         hasKey = Boolean(s.groqKey || s.cerebrasKey);
@@ -400,6 +550,7 @@
     }
     if (ch.enabled) {
       enabled = ch.enabled.newValue;
+      if (!enabled) cancelPending();
       showIdle();
       if (enabled) { failures.clear(); send({ type: 'warmup' }).catch(() => {}); tick(); }
     }

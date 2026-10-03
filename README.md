@@ -71,6 +71,7 @@ Everyone should use **their own** Groq key. Keys are free, and if friends share 
 - **Toolbar badge**: `ON`, `OFF`, or `!` when no key is set.
 - **Shortcut**: `Alt+Shift+M` turns it on or off from any tab (change it at `chrome://extensions/shortcuts`).
 - **On the quiz page**: a small glass pill in the bottom-right shows the status. It opens into a card with the question, answer and time after every answer, or when you hover it, and has its own on/off switch.
+- **Speed modes**: **Normal** (default) holds the click for about 2 seconds, varying by up to half a second so it isn't machine-regular. **God mode** clicks the instant the answer arrives (~0.4 s) and is unlocked with a password.
 - **Settings**: keys are checked as you paste them, and models and timeout live under Advanced. A test button sends one sample question to each provider.
 
 ## Python edition
@@ -112,6 +113,14 @@ If you don't have Chrome installed, set `BROWSER_CHANNEL=` (empty) in `.env` and
 
 ---
 
+## Speed modes
+
+**Normal** (default) holds the click for about 2 seconds, varying by up to half a second. **God mode** clicks as soon as the answer arrives and is unlocked with a password from the toolbar popup.
+
+A build can ship with the password fixed in `extension/config.js`, in which case it can't be changed from the interface. Otherwise it can be set in Settings. Only a hash is ever stored; the password itself is not.
+
+This is a lock, not real security: an extension runs on the user's own machine, so anyone who edits the source can reach god mode regardless.
+
 ## Keyboard shortcuts
 
 | Keys | Where | Action |
@@ -128,6 +137,8 @@ If you don't have Chrome installed, set `BROWSER_CHANNEL=` (empty) in `.env` and
 | Cerebras model | Settings > Advanced | `CEREBRAS_MODEL` | `gpt-oss-120b` |
 | Timeout per request | Settings > Advanced (ms) | `TIMEOUT_SECONDS` | 2.5 s |
 | Auto-click | Popup or Settings | `AUTO_CLICK` | on |
+| Speed mode | Popup | n/a | Normal |
+| Normal mode delay | Settings > Advanced | n/a | 2000 ms ± 500 ms |
 | Browser | n/a | `BROWSER_CHANNEL` | `chrome` |
 
 Use `openai/gpt-oss-120b` on Groq if accuracy matters more than a few hundred milliseconds.
@@ -159,6 +170,7 @@ menti-solver/
 │   ├── popup.*           toolbar popup with the on/off switch
 │   ├── welcome.*         first-run setup
 │   ├── options.*         settings page
+│   ├── config.js         build metadata
 │   ├── shared.js, ui.css, pages.css   shared components and design tokens
 │   └── icons/
 ├── python/               Python edition (Playwright)
@@ -173,6 +185,11 @@ menti-solver/
 ```
 
 ## Changelog
+
+**v2.1.0**
+- Two speed modes: Normal (about a 2 s delay before clicking) and God mode (instant).
+- God mode is password-locked; only a salted hash is stored, and `tools/make-hash.html` generates it locally.
+- Toolbar badge shows `GOD` while god mode is on.
 
 **v2.0.1**
 - Open quiz tabs keep working after the extension is updated or reloaded.

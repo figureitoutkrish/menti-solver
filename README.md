@@ -117,13 +117,13 @@ If you don't have Chrome installed, set `BROWSER_CHANNEL=` (empty) in `.env` and
 
 **Normal** (default) holds the click for about 2 seconds, varying by up to half a second. **God mode** clicks as soon as the answer arrives and is unlocked with a password from the toolbar popup.
 
-The password is set in Settings. Only a hash is ever stored; the password itself is not.
+God mode is reserved for the project owner. The password isn't published anywhere, so if you want access, ask the moderator (the repo owner) for it. Without it, the solver stays in normal mode. Only a hash is ever stored; the password itself is not.
 
 This is a lock, not real security: an extension runs on the user's own machine, so anyone who edits the source can reach god mode regardless.
 
 ## Builds
 
-- **Repo source** includes god mode (instant click). It is unlocked with a password you set in Settings.
+- **Repo source** includes god mode (instant click). God mode is unlocked only with a password held by the repo owner; ask the moderator if you need it. The published release has god mode removed entirely, so it always runs in normal mode.
 - **Published release** is the normal build: god mode is removed and it waits about 2 seconds before clicking.
 
 ## Keyboard shortcuts

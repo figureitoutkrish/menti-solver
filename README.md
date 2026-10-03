@@ -121,6 +121,11 @@ A build can ship with the password fixed in `extension/config.js`, in which case
 
 This is a lock, not real security: an extension runs on the user's own machine, so anyone who edits the source can reach god mode regardless.
 
+## Builds
+
+- **Repo source** includes god mode (instant click). It is gated by a password set in `extension/background.js` (`CACHE_TAG`), which is left empty here.
+- **Published release** is the normal build: god mode is removed and it waits about 2 seconds before clicking.
+
 ## Keyboard shortcuts
 
 | Keys | Where | Action |
